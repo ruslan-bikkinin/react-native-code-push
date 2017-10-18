@@ -112,22 +112,20 @@ function linkCodePush(androidStagingDeploymentKey, iosStagingDeploymentKey) {
 }
 
 function setupAssets() {
-    fs.unlinkSync('./index.ios.js');
-    fs.unlinkSync('./index.android.js');
+    fs.unlinkSync('./index.js');
+    fs.unlinkSync('./App.js');
 
-    fs.writeFileSync('demo.js', fs.readFileSync('../CodePushDemoApp/demo.js'));
-    fs.writeFileSync('index.ios.js', fs.readFileSync('../CodePushDemoApp/index.ios.js'));
-    fs.writeFileSync('index.android.js', fs.readFileSync('../CodePushDemoApp/index.android.js'));
+    fs.writeFileSync('index.js', fs.readFileSync('../CodePushDemoApp/index.js'));
 
     copyRecursiveSync('../CodePushDemoApp/images', './images');
 
-    fs.readFile('demo.js', 'utf8', function (err, data) {
+    fs.readFile('index.js', 'utf8', function (err, data) {
         if (err) {
             return console.error(err);
         }
         var result = data.replace(/CodePushDemoApp/g, appName);
 
-        fs.writeFile('demo.js', result, 'utf8', function (err) {
+        fs.writeFile('index.js', result, 'utf8', function (err) {
             if (err) return console.error(err);
 
             if (!/^win/.test(process.platform)) {
