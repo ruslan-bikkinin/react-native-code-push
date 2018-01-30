@@ -3,6 +3,7 @@ package com.microsoft.codepush.common.datacontracts;
 import com.google.gson.annotations.SerializedName;
 import com.microsoft.appcenter.utils.AppCenterLog;
 import com.microsoft.codepush.common.CodePush;
+import com.microsoft.codepush.common.enums.CodePushDeploymentStatus;
 
 /**
  * Represents a report about the deployment.
@@ -31,7 +32,7 @@ public class CodePushDeploymentStatusReport extends CodePushDownloadStatusReport
      * Whether the deployment succeeded or failed.
      */
     @SerializedName("status")
-    private String status;
+    private CodePushDeploymentStatus status;
 
     /**
      * Gets the version of the app that was deployed and returns it.
@@ -100,7 +101,7 @@ public class CodePushDeploymentStatusReport extends CodePushDownloadStatusReport
      *
      * @return whether the deployment succeeded or failed.
      */
-    public String getStatus() {
+    public CodePushDeploymentStatus getStatus() {
         return status;
     }
 
@@ -109,7 +110,7 @@ public class CodePushDeploymentStatusReport extends CodePushDownloadStatusReport
      *
      * @param status whether the deployment succeeded or failed.
      */
-    public void setStatus(String status) {
+    public void setStatus(CodePushDeploymentStatus status) {
         this.status = status;
     }
 }

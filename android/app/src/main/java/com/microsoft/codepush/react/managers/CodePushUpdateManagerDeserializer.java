@@ -1,7 +1,7 @@
 package com.microsoft.codepush.react.managers;
 
-import com.microsoft.codepush.react.datacontracts.CodePushLocalPackage;
-import com.microsoft.codepush.react.managers.CodePushUpdateManager;
+import com.microsoft.codepush.common.datacontracts.CodePushLocalPackage;
+import com.microsoft.codepush.common.managers.CodePushUpdateManager;
 import com.microsoft.codepush.react.utils.CodePushUtils;
 
 import org.json.JSONObject;

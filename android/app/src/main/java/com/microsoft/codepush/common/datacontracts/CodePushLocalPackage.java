@@ -46,6 +46,12 @@ public class CodePushLocalPackage extends CodePushPackage {
         return codePushLocalPackage;
     }
 
+    public static CodePushLocalPackage createQueryPackage(String appVersion){
+        CodePushLocalPackage codePushLocalPackage = new CodePushLocalPackage();
+        codePushLocalPackage.setAppVersion(appVersion);
+        return codePushLocalPackage;
+    }
+
     /**
      * Creates an instance of the package from basic package.
      *

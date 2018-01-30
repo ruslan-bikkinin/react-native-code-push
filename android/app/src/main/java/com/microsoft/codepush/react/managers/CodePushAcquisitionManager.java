@@ -3,14 +3,13 @@ package com.microsoft.codepush.react.managers;
 import android.os.AsyncTask;
 
 import com.microsoft.codepush.react.CodePushConfiguration;
-import com.microsoft.codepush.react.datacontracts.CodePushDeploymentStatusReport;
-import com.microsoft.codepush.react.datacontracts.CodePushDownloadStatusReport;
-import com.microsoft.codepush.react.datacontracts.CodePushLocalPackage;
-import com.microsoft.codepush.react.datacontracts.CodePushRemotePackage;
-import com.microsoft.codepush.react.datacontracts.CodePushStatusReport;
-import com.microsoft.codepush.react.datacontracts.CodePushUpdateRequest;
-import com.microsoft.codepush.react.datacontracts.CodePushUpdateResponse;
-import com.microsoft.codepush.react.datacontracts.CodePushUpdateResponseUpdateInfo;
+import com.microsoft.codepush.common.datacontracts.CodePushDeploymentStatusReport;
+import com.microsoft.codepush.common.datacontracts.CodePushDownloadStatusReport;
+import com.microsoft.codepush.common.datacontracts.CodePushLocalPackage;
+import com.microsoft.codepush.common.datacontracts.CodePushRemotePackage;
+import com.microsoft.codepush.common.datacontracts.CodePushUpdateRequest;
+import com.microsoft.codepush.common.datacontracts.CodePushUpdateResponse;
+import com.microsoft.codepush.common.datacontracts.CodePushUpdateResponseUpdateInfo;
 import com.microsoft.codepush.react.exceptions.CodePushUnknownException;
 import com.microsoft.codepush.react.utils.CodePushRNUtils;
 import com.microsoft.codepush.react.utils.CodePushUtils;
@@ -114,19 +113,19 @@ public class CodePushAcquisitionManager {
         return result;
     }
 
-    public boolean reportStatusDeploy(CodePushStatusReport statusReport) {
+    public boolean reportStatusDeploy(CodePushDeploymentStatusReport statusReport) {
         final String requestUrl = mServerUrl + "reportStatus/download";
 
         if (statusReport.Package != null) {
-            switch (statusReport.Status) {
+            switch (statusReport.getStatus()) {
                 case SUCCEEDED:
                 case FAILED:
                     break;
                 default: {
-                    if (statusReport.Status == null) {
+                    if (statusReport.getStatus() == null) {
                         throw new IllegalArgumentException("Missing status argument.");
                     } else {
-                        throw new IllegalArgumentException("Unrecognized status \"" + statusReport.Status + "\".");
+                        throw new IllegalArgumentException("Unrecognized status \"" + statusReport.getStatus() + "\".");
                     }
                 }
             }
@@ -204,7 +203,7 @@ public class CodePushAcquisitionManager {
 
     public void reportStatusDownload(CodePushLocalPackage downloadedPackage) {
         final String requestUrl = mServerUrl + "reportStatus/download";
-        final CodePushDownloadStatusReport downloadStatusReport = new CodePushDownloadStatusReport(mClientUniqueId, mDeploymentKey, downloadedPackage.Label);
+        final CodePushDownloadStatusReport downloadStatusReport = CodePushDownloadStatusReport.createReport(mClientUniqueId, mDeploymentKey, downloadedPackage.Label);
         final String downloadStatusReportJsonString = CodePushUtils.convertObjectToJsonString(downloadStatusReport);
 
         AsyncTask<Void, Void, Void> asyncTask = new AsyncTask<Void, Void, Void>() {

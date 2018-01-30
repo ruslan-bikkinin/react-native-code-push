@@ -9,7 +9,7 @@ import com.facebook.react.bridge.JavaScriptModule;
 import com.facebook.react.bridge.NativeModule;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.uimanager.ViewManager;
-import com.microsoft.codepush.react.datacontracts.CodePushLocalPackage;
+import com.microsoft.codepush.common.datacontracts.CodePushLocalPackage;
 import com.microsoft.codepush.react.datacontracts.CodePushRemotePackage;
 import com.microsoft.codepush.react.datacontracts.CodePushSyncOptions;
 import com.microsoft.codepush.react.enums.CodePushUpdateState;

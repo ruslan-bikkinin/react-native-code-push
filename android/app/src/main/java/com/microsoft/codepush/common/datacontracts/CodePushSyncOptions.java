@@ -158,7 +158,7 @@ public class CodePushSyncOptions {
      *
      * @return whether to ignore failed updates.
      */
-    public boolean getIgnoreFailedUpdates() {
+    public boolean isIgnoreFailedUpdates() {
         return ignoreFailedUpdates;
     }
 

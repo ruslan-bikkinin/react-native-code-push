@@ -6,10 +6,11 @@ import android.content.SharedPreferences;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableMap;
+import com.microsoft.codepush.common.datacontracts.CodePushDeploymentStatusReport;
 import com.microsoft.codepush.react.CodePushConstants;
 import com.microsoft.codepush.react.utils.CodePushRNUtils;
 import com.microsoft.codepush.react.utils.CodePushUtils;
-import com.microsoft.codepush.react.datacontracts.CodePushLocalPackage;
+import com.microsoft.codepush.common.datacontracts.CodePushLocalPackage;
 import com.microsoft.codepush.react.datacontracts.CodePushStatusReport;
 import com.microsoft.codepush.react.enums.CodePushDeploymentStatus;
 
@@ -139,7 +140,7 @@ public class CodePushTelemetryManager {
         }
     }
 
-    public void saveStatusReportForRetry(CodePushStatusReport statusReport) {
+    public void saveStatusReportForRetry(CodePushDeploymentStatusReport statusReport) {
         JSONObject statusReportJSON = CodePushUtils.convertObjectToJsonObject(statusReport);
         mSettings.edit().putString(RETRY_DEPLOYMENT_REPORT_KEY, statusReportJSON.toString()).commit();
     }

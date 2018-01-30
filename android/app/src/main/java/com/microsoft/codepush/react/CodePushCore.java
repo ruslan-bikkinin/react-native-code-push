@@ -1,46 +1,5 @@
 package com.microsoft.codepush.react;
 
-import com.facebook.react.ReactApplication;
-import com.facebook.react.ReactInstanceManager;
-import com.facebook.react.ReactRootView;
-import com.facebook.react.bridge.JSBundleLoader;
-import com.facebook.react.bridge.Callback;
-import com.facebook.react.bridge.LifecycleEventListener;
-import com.facebook.react.bridge.NativeModule;
-import com.facebook.react.bridge.Promise;
-import com.facebook.react.bridge.ReactApplicationContext;
-import com.facebook.react.bridge.WritableMap;
-import com.facebook.react.modules.core.ChoreographerCompat;
-import com.facebook.react.modules.core.ReactChoreographer;
-import com.microsoft.codepush.react.datacontracts.CodePushSyncOptions;
-import com.microsoft.codepush.react.enums.CodePushCheckFrequency;
-import com.microsoft.codepush.react.enums.CodePushDeploymentStatus;
-import com.microsoft.codepush.react.enums.CodePushInstallMode;
-import com.microsoft.codepush.react.datacontracts.CodePushLocalPackage;
-import com.microsoft.codepush.react.datacontracts.CodePushRemotePackage;
-import com.microsoft.codepush.react.datacontracts.CodePushStatusReport;
-import com.microsoft.codepush.react.enums.CodePushSyncStatus;
-import com.microsoft.codepush.react.enums.CodePushUpdateState;
-import com.microsoft.codepush.react.exceptions.CodePushInvalidUpdateException;
-import com.microsoft.codepush.react.exceptions.CodePushNotInitializedException;
-import com.microsoft.codepush.react.exceptions.CodePushUnknownException;
-import com.microsoft.codepush.react.interfaces.CodePushBinaryVersionMismatchListener;
-import com.microsoft.codepush.react.interfaces.CodePushDownloadProgressListener;
-import com.microsoft.codepush.react.interfaces.CodePushSyncStatusListener;
-import com.microsoft.codepush.react.interfaces.DownloadProgressCallback;
-import com.microsoft.codepush.react.interfaces.ReactInstanceHolder;
-import com.microsoft.codepush.react.managers.CodePushAcquisitionManager;
-import com.microsoft.codepush.react.managers.CodePushRestartManager;
-import com.microsoft.codepush.react.managers.CodePushTelemetryManager;
-import com.microsoft.codepush.react.managers.CodePushTelemetryManagerDeserializer;
-import com.microsoft.codepush.react.managers.CodePushUpdateManager;
-import com.microsoft.codepush.react.managers.CodePushUpdateManagerDeserializer;
-import com.microsoft.codepush.react.managers.SettingsManager;
-import com.microsoft.codepush.react.utils.CodePushRNUtils;
-import com.microsoft.codepush.react.utils.CodePushUpdateUtils;
-import com.microsoft.codepush.react.utils.CodePushUtils;
-import com.microsoft.codepush.react.exceptions.CodePushInvalidPublicKeyException;
-
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageInfo;
@@ -50,9 +9,52 @@ import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
-import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.view.View;
+
+import com.facebook.react.ReactApplication;
+import com.facebook.react.ReactInstanceManager;
+import com.facebook.react.ReactRootView;
+import com.facebook.react.bridge.Callback;
+import com.facebook.react.bridge.JSBundleLoader;
+import com.facebook.react.bridge.LifecycleEventListener;
+import com.facebook.react.bridge.NativeModule;
+import com.facebook.react.bridge.Promise;
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.modules.core.ChoreographerCompat;
+import com.facebook.react.modules.core.ReactChoreographer;
+import com.microsoft.codepush.common.DownloadProgress;
+import com.microsoft.codepush.common.connection.PackageDownloader;
+import com.microsoft.codepush.common.datacontracts.CodePushDeploymentStatusReport;
+import com.microsoft.codepush.common.datacontracts.CodePushLocalPackage;
+import com.microsoft.codepush.common.datacontracts.CodePushRemotePackage;
+import com.microsoft.codepush.common.datacontracts.CodePushSyncOptions;
+import com.microsoft.codepush.common.datacontracts.CodePushUpdateDialog;
+import com.microsoft.codepush.common.enums.CodePushDeploymentStatus;
+import com.microsoft.codepush.common.enums.CodePushInstallMode;
+import com.microsoft.codepush.common.enums.CodePushSyncStatus;
+import com.microsoft.codepush.common.enums.CodePushUpdateState;
+import com.microsoft.codepush.common.interfaces.CodePushBinaryVersionMismatchListener;
+import com.microsoft.codepush.common.interfaces.CodePushDownloadProgressListener;
+import com.microsoft.codepush.common.interfaces.CodePushSyncStatusListener;
+import com.microsoft.codepush.common.interfaces.DownloadProgressCallback;
+import com.microsoft.codepush.common.managers.CodePushUpdateManager;
+import com.microsoft.codepush.common.managers.CodePushUpdateManagerDeserializer;
+import com.microsoft.codepush.common.utils.StringUtils;
+import com.microsoft.codepush.react.exceptions.CodePushInvalidPublicKeyException;
+import com.microsoft.codepush.react.exceptions.CodePushInvalidUpdateException;
+import com.microsoft.codepush.react.exceptions.CodePushNotInitializedException;
+import com.microsoft.codepush.react.exceptions.CodePushUnknownException;
+import com.microsoft.codepush.react.interfaces.ReactInstanceHolder;
+import com.microsoft.codepush.react.managers.CodePushAcquisitionManager;
+import com.microsoft.codepush.react.managers.CodePushRestartManager;
+import com.microsoft.codepush.react.managers.CodePushTelemetryManager;
+import com.microsoft.codepush.react.managers.CodePushTelemetryManagerDeserializer;
+import com.microsoft.codepush.react.managers.SettingsManager;
+import com.microsoft.codepush.react.utils.CodePushRNUtils;
+import com.microsoft.codepush.react.utils.CodePushUpdateUtils;
+import com.microsoft.codepush.react.utils.CodePushUtils;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -65,6 +67,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+
+import static com.microsoft.codepush.common.enums.CodePushCheckFrequency.ON_APP_START;
+import static com.microsoft.codepush.common.enums.CodePushInstallMode.IMMEDIATE;
+import static com.microsoft.codepush.common.enums.CodePushInstallMode.ON_NEXT_RESTART;
+import static com.microsoft.codepush.common.utils.StringUtils.isNullOrEmpty;
 
 public class CodePushCore {
     private static boolean sIsRunningBinaryVersion = false;
@@ -108,7 +115,7 @@ public class CodePushCore {
     private int mMinimumBackgroundDuration = 0;
 
     private boolean mSyncInProgress = false;
-    private CodePushInstallMode mCurrentInstallModeInProgress = CodePushInstallMode.ON_NEXT_RESTART;
+    private CodePushInstallMode mCurrentInstallModeInProgress = ON_NEXT_RESTART;
 
     public CodePushCore(
             String deploymentKey,
@@ -223,7 +230,7 @@ public class CodePushCore {
                 break;
             }
             case UPDATE_INSTALLED: {
-                if (mCurrentInstallModeInProgress == CodePushInstallMode.ON_NEXT_RESTART) {
+                if (mCurrentInstallModeInProgress == ON_NEXT_RESTART) {
                     CodePushRNUtils.log("Update is installed and will be run on the next app restart.");
                 } else if (mCurrentInstallModeInProgress == CodePushInstallMode.ON_NEXT_RESUME) {
                     CodePushRNUtils.log("Update is installed and will be run after the app has been in the background for at least " + mMinimumBackgroundDuration + " seconds.");
@@ -328,7 +335,7 @@ public class CodePushCore {
         this.mAssetsBundleFileName = assetsBundleFileName;
         String binaryJsBundleUrl = CodePushConstants.ASSETS_BUNDLE_PREFIX + assetsBundleFileName;
 
-        String packageFilePath = mUpdateManager.getCurrentPackageBundlePath(this.mAssetsBundleFileName);
+        String packageFilePath = mUpdateManager.getCurrentPackageEntryPath(this.mAssetsBundleFileName);
         if (packageFilePath == null) {
             // There has not been any downloaded updates.
             CodePushRNUtils.logBundleUrl(binaryJsBundleUrl);
@@ -525,32 +532,25 @@ public class CodePushCore {
         if (localPackage != null) {
             queryPackage = localPackage;
         } else {
-            queryPackage = new CodePushLocalPackage(configuration.AppVersion, "", "", false, false, false, false, "", "", false);
+            queryPackage = CodePushLocalPackage.createQueryPackage(configuration.AppVersion);
         }
 
         CodePushRemotePackage update = new CodePushAcquisitionManager(configuration).queryUpdateWithCurrentPackage(queryPackage);
 
-        if (update == null || update.UpdateAppVersion ||
-                localPackage != null && (update.PackageHash.equals(localPackage.PackageHash)) ||
-                (localPackage == null || localPackage.IsDebugOnly) && configuration.PackageHash.equals(update.PackageHash)) {
-            if (update != null && update.UpdateAppVersion) {
+        if (update == null || update.isUpdateAppVersion() ||
+                localPackage != null && (update.getPackageHash().equals(localPackage.getPackageHash())) ||
+                (localPackage == null || localPackage.isDebugOnly()) && configuration.PackageHash.equals(update.getPackageHash())) {
+            if (update != null && update.isUpdateAppVersion()) {
                 CodePushRNUtils.log("An update is available but it is not targeting the binary version of your app.");
                 binaryVersionMismatchChange(update);
             }
             return null;
         } else {
-            return new CodePushRemotePackage(
-                    update.AppVersion,
-                    deploymentKey != null ? deploymentKey : update.DeploymentKey,
-                    update.Description,
-                    isFailedUpdate(update.PackageHash),
-                    update.IsMandatory,
-                    update.Label,
-                    update.PackageHash,
-                    update.PackageSize,
-                    update.DownloadUrl,
-                    update.UpdateAppVersion
-            );
+            String deploymentKeyFinal = deploymentKey != null ? deploymentKey : update.getDeploymentKey();
+            update.setDeploymentKey(deploymentKeyFinal);
+            boolean isFailedUpdate = isFailedUpdate(update.getPackageHash());
+            update.setFailedInstall(isFailedUpdate);
+            return update;
         }
     }
 
@@ -572,8 +572,8 @@ public class CodePushCore {
         Boolean currentUpdateIsPending = false;
         Boolean isDebugOnly = false;
 
-        if (currentPackage.PackageHash != null && !currentPackage.PackageHash.isEmpty()) {
-            String currentHash = currentPackage.PackageHash;
+        String currentHash = currentPackage.getPackageHash();
+        if (currentHash != null && !currentHash.isEmpty()) {
             currentUpdateIsPending = mSettingsManager.isPendingUpdate(currentHash);
         }
 
@@ -604,29 +604,18 @@ public class CodePushCore {
             }
 
             // Enable differentiating pending vs. non-pending updates
-            currentPackage = new CodePushLocalPackage(
-                    currentPackage.AppVersion,
-                    currentPackage.DeploymentKey,
-                    currentPackage.Description,
-                    isFailedUpdate(currentPackage.PackageHash),
-                    isFirstRun(currentPackage.PackageHash),
-                    currentPackage.IsMandatory,
-                    currentUpdateIsPending,
-                    currentPackage.Label,
-                    currentPackage.PackageHash,
-                    isDebugOnly
-            );
+            boolean isFailedUpdate = isFailedUpdate(currentPackage.getPackageHash());
+            currentPackage.setFailedInstall(isFailedUpdate);
+            boolean isFirstRun = isFirstRun(currentPackage.getPackageHash());
+            currentPackage.setFirstRun(isFirstRun);
+            currentPackage.setPending(currentUpdateIsPending);
+            currentPackage.setDebugOnly(isDebugOnly);
             return currentPackage;
         }
     }
 
     private CodePushSyncOptions getDefaultSyncOptions() {
-        return new CodePushSyncOptions() {{
-            DeploymentKey = mDeploymentKey;
-            InstallMode = CodePushInstallMode.ON_NEXT_RESTART;
-            MandatoryInstallMode = CodePushInstallMode.IMMEDIATE;
-            MinimumBackgroundDuration = 0;
-        }};
+        return new CodePushSyncOptions(mDeploymentKey);
     }
 
     public void sync() {
@@ -647,30 +636,25 @@ public class CodePushCore {
         if (syncOptions == null) {
             syncOptions = getDefaultSyncOptions();
         }
-        if (syncOptions.DeploymentKey == null || syncOptions.DeploymentKey.isEmpty()) {
-            syncOptions.DeploymentKey = mDeploymentKey;
+
+        if (isNullOrEmpty(syncOptions.getDeploymentKey())) {
+            syncOptions.setDeploymentKey(mDeploymentKey);
         }
-        if (syncOptions.InstallMode == null) {
-            syncOptions.InstallMode = CodePushInstallMode.ON_NEXT_RESTART;
+        if (syncOptions.getInstallMode() == null) {
+            syncOptions.setInstallMode(ON_NEXT_RESTART);
         }
-        if (syncOptions.MandatoryInstallMode == null) {
-            syncOptions.MandatoryInstallMode = CodePushInstallMode.IMMEDIATE;
+        if (syncOptions.getMandatoryInstallMode() == null) {
+            syncOptions.setMandatoryInstallMode(IMMEDIATE);
         }
-        if (syncOptions.MinimumBackgroundDuration == null) {
-            syncOptions.MinimumBackgroundDuration = 0;
-        }
-        if (syncOptions.IgnoreFailedUpdates == null) {
-            syncOptions.IgnoreFailedUpdates = true;
-        }
-        if (syncOptions.CheckFrequency == null) {
-            syncOptions.CheckFrequency = CodePushCheckFrequency.ON_APP_START;
+        if (syncOptions.getCheckFrequency() == null) {
+            syncOptions.setCheckFrequency(ON_APP_START);
         }
 
         CodePushConfiguration nativeConfiguration = getConfiguration();
         final CodePushConfiguration configuration = new CodePushConfiguration(
                 nativeConfiguration.AppVersion,
                 nativeConfiguration.ClientUniqueId,
-                syncOptions.DeploymentKey != null ? syncOptions.DeploymentKey : nativeConfiguration.DeploymentKey,
+                syncOptions.getDeploymentKey() != null ? syncOptions.getDeploymentKey() : nativeConfiguration.DeploymentKey,
                 nativeConfiguration.ServerUrl,
                 nativeConfiguration.PackageHash
         );
@@ -678,16 +662,16 @@ public class CodePushCore {
         mSyncInProgress = true;
         notifyApplicationReady();
         syncStatusChange(CodePushSyncStatus.CHECKING_FOR_UPDATE);
-        final CodePushRemotePackage remotePackage = checkForUpdate(syncOptions.DeploymentKey);
+        final CodePushRemotePackage remotePackage = checkForUpdate(syncOptions.getDeploymentKey());
 
-        final boolean updateShouldBeIgnored = remotePackage != null && (remotePackage.FailedInstall && syncOptions.IgnoreFailedUpdates);
+        final boolean updateShouldBeIgnored = remotePackage != null && (remotePackage.isFailedInstall() && syncOptions.isIgnoreFailedUpdates());
         if (remotePackage == null || updateShouldBeIgnored) {
             if (updateShouldBeIgnored) {
                 CodePushRNUtils.log("An update is available, but it is being ignored due to having been previously rolled back.");
             }
 
             CodePushLocalPackage currentPackage = getCurrentPackage();
-            if (currentPackage != null && currentPackage.IsPending) {
+            if (currentPackage != null && currentPackage.isPending()) {
                 syncStatusChange(CodePushSyncStatus.UPDATE_INSTALLED);
                 mSyncInProgress = false;
                 if (promise != null) promise.resolve("");
@@ -698,21 +682,22 @@ public class CodePushCore {
                 if (promise != null) promise.resolve("");
                 return;
             }
-        } else if (syncOptions.UpdateDialog != null) {
+        } else if (syncOptions.getUpdateDialog() != null) {
+
             String message;
             String button1Text;
-            String button2Text = syncOptions.UpdateDialog.OptionalIgnoreButtonLabel;
+            String button2Text = syncOptions.getUpdateDialog().getOptionalIgnoreButtonLabel();
 
-            if (remotePackage.IsMandatory) {
-                message = syncOptions.UpdateDialog.MandatoryUpdateMessage;
-                button1Text = syncOptions.UpdateDialog.MandatoryContinueButtonLabel;
+            if (remotePackage.isMandatory()) {
+                message = syncOptions.getUpdateDialog().getMandatoryUpdateMessage();
+                button1Text = syncOptions.getUpdateDialog().getMandatoryContinueButtonLabel();
             } else {
-                message = syncOptions.UpdateDialog.OptionalUpdateMessage;
-                button1Text = syncOptions.UpdateDialog.OptionalInstallButtonLabel;
+                message = syncOptions.getUpdateDialog().getOptionalUpdateMessage();
+                button1Text = syncOptions.getUpdateDialog().getOptionalIgnoreButtonLabel();
             }
 
-            if (syncOptions.UpdateDialog.AppendReleaseDescription && remotePackage.Description != null && !remotePackage.Description.isEmpty()) {
-                message = syncOptions.UpdateDialog.DescriptionPrefix + " " + remotePackage.Description;
+            if (syncOptions.getUpdateDialog().getAppendReleaseDescription() && remotePackage.getDescription() != null && !remotePackage.getDescription().isEmpty()) {
+                message = syncOptions.getUpdateDialog().getDescriptionPrefix() + " " + remotePackage.getDescription();
             }
 
             final CodePushSyncOptions syncOptionsFinal = syncOptions;
@@ -759,7 +744,7 @@ public class CodePushCore {
                 }
             };
 
-            final String titleFinal = syncOptions.UpdateDialog.Title;
+            final String titleFinal = syncOptions.getUpdateDialog().getTitle();
             final String messageFinal = message;
             final String button1TextFinal = button1Text;
             final String button2TextFinal = button2Text;
@@ -794,18 +779,18 @@ public class CodePushCore {
     private void doDownloadAndInstall(final CodePushRemotePackage remotePackage, final CodePushSyncOptions syncOptions, final CodePushConfiguration configuration) throws Exception {
         syncStatusChange(CodePushSyncStatus.DOWNLOADING_PACKAGE);
         CodePushLocalPackage localPackage = downloadUpdate(remotePackage);
-        if (localPackage.DownloadException != null) {
-            throw localPackage.DownloadException;
+        if (localPackage.getDownloadException() != null) {
+            throw localPackage.getDownloadException();
         }
         new CodePushAcquisitionManager(configuration).reportStatusDownload(localPackage);
 
-        CodePushInstallMode resolvedInstallMode = localPackage.IsMandatory ? syncOptions.MandatoryInstallMode : syncOptions.InstallMode;
+        CodePushInstallMode resolvedInstallMode = localPackage.isMandatory() ? syncOptions.getMandatoryInstallMode() : syncOptions.getInstallMode();
         mCurrentInstallModeInProgress = resolvedInstallMode;
         syncStatusChange(CodePushSyncStatus.INSTALLING_UPDATE);
-        installUpdate(localPackage, resolvedInstallMode, syncOptions.MinimumBackgroundDuration);
+        installUpdate(localPackage, resolvedInstallMode, syncOptions.getMinimumBackgroundDuration());
         syncStatusChange(CodePushSyncStatus.UPDATE_INSTALLED);
         mSyncInProgress = false;
-        if (resolvedInstallMode == CodePushInstallMode.IMMEDIATE) {
+        if (resolvedInstallMode == IMMEDIATE) {
             mRestartManager.restartApp(false);
         } else {
             mRestartManager.clearPendingRestart();
@@ -817,7 +802,9 @@ public class CodePushCore {
         try {
             JSONObject mutableUpdatePackage = CodePushUtils.convertObjectToJsonObject(updatePackage);
             CodePushUtils.setJSONValueForKey(mutableUpdatePackage, CodePushConstants.BINARY_MODIFIED_TIME_KEY, "" + getBinaryResourcesModifiedTime());
-            mUpdateManager.downloadPackage(mutableUpdatePackage, getAssetsBundleFileName(), new DownloadProgressCallback() {
+
+            DownloadProgressCallback downloadProgressCallback = new DownloadProgressCallback() {
+
                 private boolean hasScheduledNextFrame = false;
                 private DownloadProgress latestDownloadProgress = null;
 
@@ -856,24 +843,30 @@ public class CodePushCore {
                         downloadProgressChange(downloadProgress.getReceivedBytes(), downloadProgress.getTotalBytes());
                     }
                 }
-            }, mPublicKey);
+            };
 
-            newPackage = mUpdateManagerDeserializer.getPackage(updatePackage.PackageHash);
+            PackageDownloader packageDownloader = new PackageDownloader();
+            final String downloadUrlString = updatePackage.getDownloadUrl();
+            packageDownloader.setParameters(downloadUrlString, new File(getAssetsBundleFileName()), downloadProgressCallback);
+
+            mUpdateManager.downloadPackage(mutableUpdatePackage, downloadProgressCallback, packageDownloader);
+
+            newPackage = mUpdateManagerDeserializer.getPackage(updatePackage.getPackageHash());
             return newPackage;
         } catch (IOException e) {
             e.printStackTrace();
-            return new CodePushLocalPackage(e);
+            return CodePushLocalPackage.createFailedLocalPackage(e);
         } catch (CodePushInvalidUpdateException e) {
             e.printStackTrace();
             mSettingsManager.saveFailedUpdate(CodePushUtils.convertObjectToJsonObject(updatePackage));
-            return new CodePushLocalPackage(e);
+            return CodePushLocalPackage.createFailedLocalPackage(e);
         }
     }
 
     public void installUpdate(final CodePushLocalPackage updatePackage, final CodePushInstallMode installMode, final int minimumBackgroundDuration) {
         mUpdateManager.installPackage(CodePushUtils.convertObjectToJsonObject(updatePackage), mSettingsManager.isPendingUpdate(null));
 
-        String pendingHash = updatePackage.PackageHash;
+        String pendingHash = updatePackage.getPackageHash();
         if (pendingHash == null) {
             throw new CodePushUnknownException("Update package to be installed has no hash.");
         } else {
@@ -884,7 +877,7 @@ public class CodePushCore {
                 // We also add the resume listener if the installMode is IMMEDIATE, because
                 // if the current activity is backgrounded, we want to reload the bundle when
                 // it comes back into the foreground.
-                installMode == CodePushInstallMode.IMMEDIATE ||
+                installMode == IMMEDIATE ||
                 installMode == CodePushInstallMode.ON_NEXT_SUSPEND) {
 
             // Store the minimum duration on the native module as an instance
@@ -912,7 +905,7 @@ public class CodePushCore {
                         // the foreground, so explicitly wait for it to be backgrounded first
                         if (lastPausedDate != null) {
                             long durationInBackground = (new Date().getTime() - lastPausedDate.getTime()) / 1000;
-                            if (installMode == CodePushInstallMode.IMMEDIATE
+                            if (installMode == IMMEDIATE
                                     || durationInBackground >= mMinimumBackgroundDuration) {
                                 CodePushRNUtils.log("Loading bundle on resume");
                                 mRestartManager.restartApp(false);
@@ -949,8 +942,7 @@ public class CodePushCore {
 
     public boolean isFirstRun(String packageHash) {
         return didUpdate()
-                && packageHash != null
-                && packageHash.length() > 0
+                && !isNullOrEmpty(packageHash)
                 && packageHash.equals(mUpdateManager.getCurrentPackageHash());
     }
 
@@ -960,7 +952,7 @@ public class CodePushCore {
 
     public void notifyApplicationReady() {
         mSettingsManager.removePendingUpdate();
-        final CodePushStatusReport statusReport = getNewStatusReport();
+        final CodePushDeploymentStatusReport statusReport = getNewStatusReport();
         if (statusReport != null) {
             tryReportStatus(statusReport);
         }
@@ -1105,15 +1097,16 @@ public class CodePushCore {
         return false;
     }
 
-    private void tryReportStatus(final CodePushStatusReport statusReport) {
+    private void tryReportStatus(final CodePushDeploymentStatusReport statusReport) {
         boolean succeeded = true;
         try {
             CodePushConfiguration nativeConfiguration = getConfiguration();
-            if (statusReport.AppVersion != null && !statusReport.AppVersion.isEmpty()) {
-                CodePushRNUtils.log("Reporting binary update (" + statusReport.AppVersion + ")");
+            String appVersion = statusReport.getAppVersion();
+            if (appVersion != null && !appVersion.isEmpty()) {
+                CodePushRNUtils.log("Reporting binary update (" + appVersion + ")");
                 succeeded = new CodePushAcquisitionManager(nativeConfiguration).reportStatusDeploy(statusReport);
             } else {
-                if (statusReport.Status.equals(CodePushDeploymentStatus.SUCCEEDED)) {
+                if (statusReport.getStatus() == CodePushDeploymentStatus.SUCCEEDED) {
                     CodePushRNUtils.log("Reporting CodePush update success (" + statusReport.Label + ")");
                 } else {
                     CodePushRNUtils.log("Reporting CodePush update rollback (" + statusReport.Label + ")");
@@ -1122,7 +1115,7 @@ public class CodePushCore {
                 CodePushConfiguration configuration = new CodePushConfiguration(
                         nativeConfiguration.AppVersion,
                         nativeConfiguration.ClientUniqueId,
-                        statusReport.Package.DeploymentKey,
+                        statusReport.getDeploymentKey(),
                         nativeConfiguration.ServerUrl,
                         nativeConfiguration.PackageHash
                 );
@@ -1147,7 +1140,7 @@ public class CodePushCore {
 
                     @Override
                     public void onHostResume() {
-                        final CodePushStatusReport statusReport = getNewStatusReport();
+                        final CodePushDeploymentStatusReport statusReport = getNewStatusReport();
                         if (statusReport != null) {
                             tryReportStatus(statusReport);
                         }
@@ -1174,11 +1167,11 @@ public class CodePushCore {
         }
     }
 
-    public void recordStatusReported(CodePushStatusReport statusReport) {
+    public void recordStatusReported(CodePushDeploymentStatusReport statusReport) {
         mTelemetryManager.recordStatusReported(statusReport);
     }
 
-    public CodePushStatusReport getNewStatusReport() {
+    public CodePushDeploymentStatusReport getNewStatusReport() {
         if (needToReportRollback()) {
             setNeedToReportRollback(false);
             JSONArray failedUpdates = mSettingsManager.getFailedUpdates();
@@ -1186,7 +1179,7 @@ public class CodePushCore {
                 try {
                     JSONObject lastFailedPackageJSON = failedUpdates.getJSONObject(failedUpdates.length() - 1);
                     WritableMap lastFailedPackage = CodePushRNUtils.convertJsonObjectToWritable(lastFailedPackageJSON);
-                    CodePushStatusReport failedStatusReport = mTelemetryManagerDeserializer.getRollbackReport(lastFailedPackage);
+                    CodePushDeploymentStatusReport failedStatusReport = mTelemetryManagerDeserializer.getRollbackReport(lastFailedPackage);
                     if (failedStatusReport != null) {
                         return failedStatusReport;
                     }
@@ -1197,18 +1190,18 @@ public class CodePushCore {
         } else if (didUpdate()) {
             JSONObject currentPackage = mUpdateManager.getCurrentPackage();
             if (currentPackage != null) {
-                CodePushStatusReport newPackageStatusReport = mTelemetryManagerDeserializer.getUpdateReport(CodePushRNUtils.convertJsonObjectToWritable(currentPackage));
+                CodePushDeploymentStatusReport newPackageStatusReport = mTelemetryManagerDeserializer.getUpdateReport(CodePushRNUtils.convertJsonObjectToWritable(currentPackage));
                 if (newPackageStatusReport != null) {
                     return newPackageStatusReport;
                 }
             }
         } else if (isRunningBinaryVersion()) {
-            CodePushStatusReport newAppVersionStatusReport = mTelemetryManagerDeserializer.getBinaryUpdateReport(getAppVersion());
+            CodePushDeploymentStatusReport newAppVersionStatusReport = mTelemetryManagerDeserializer.getBinaryUpdateReport(getAppVersion());
             if (newAppVersionStatusReport != null) {
                 return newAppVersionStatusReport;
             }
         } else {
-            CodePushStatusReport retryStatusReport = mTelemetryManagerDeserializer.getRetryStatusReport();
+            CodePushDeploymentStatusReport retryStatusReport = mTelemetryManagerDeserializer.getRetryStatusReport();
             if (retryStatusReport != null) {
                 return retryStatusReport;
             }
@@ -1224,14 +1217,14 @@ public class CodePushCore {
     public void downloadAndReplaceCurrentBundle(String remoteBundleUrl) {
         if (isUsingTestConfiguration()) {
             try {
-                mUpdateManager.downloadAndReplaceCurrentBundle(remoteBundleUrl, getAssetsBundleFileName());
+                mUpdateManager.downloadAndReplaceCurrentUpdate(remoteBundleUrl, getAssetsBundleFileName());
             } catch (IOException e) {
                 throw new CodePushUnknownException("Unable to replace current bundle", e);
             }
         }
     }
 
-    public void saveStatusReportForRetry(CodePushStatusReport statusReport) {
+    public void saveStatusReportForRetry(CodePushDeploymentStatusReport statusReport) {
         mTelemetryManager.saveStatusReportForRetry(statusReport);
     }
 }
