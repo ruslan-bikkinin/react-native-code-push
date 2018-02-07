@@ -1,9 +1,13 @@
-package com.microsoft.codepush.common.connection;
+package com.microsoft.codepush.common.requests;
+
 
 import android.os.AsyncTask;
 
+import com.microsoft.appcenter.utils.AppCenterLog;
+import com.microsoft.codepush.common.CodePush;
 import com.microsoft.codepush.common.CodePushConstants;
 import com.microsoft.codepush.common.DownloadProgress;
+import com.microsoft.codepush.common.exceptions.ApiRequestException;
 import com.microsoft.codepush.common.exceptions.CodePushDownloadPackageException;
 import com.microsoft.codepush.common.exceptions.CodePushFinalizeException;
 import com.microsoft.codepush.common.interfaces.DownloadProgressCallback;
@@ -16,34 +20,17 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-/**
- * Downloads an update.
- */
-public class PackageDownloader extends AsyncTask<Void, Void, CodePushDownloadPackageResult> {
+import static com.microsoft.codepush.common.utils.CodePushUtils.createConnection;
+
+public class DownloadPackageTask extends RequestTask<CodePushDownloadPackageResult> {
 
     /**
      * Header in the beginning of every zip file.
      */
-    private final Integer ZIP_HEADER = 0x504b0304;
-
-    /**
-     * Url for downloading an update.
-     */
-    private String downloadUrlString;
-
-    /**
-     * Path to download file to.
-     */
-    private File downloadFile;
-
-    /**
-     * Callback for download process.
-     */
-    private DownloadProgressCallback downloadProgressCallback;
+    private final static Integer ZIP_HEADER = 0x504b0304;
 
     /**
      * Instance of {@link FileUtils} to work with.
@@ -51,58 +38,46 @@ public class PackageDownloader extends AsyncTask<Void, Void, CodePushDownloadPac
     private FileUtils mFileUtils;
 
     /**
-     * Creates an instance of {@link PackageDownloader} provided instances of utils.
-     * @param fileUtils instance of {@link FileUtils} to work with.
+     * Url for downloading an update.
      */
-    public PackageDownloader(FileUtils fileUtils) {
-        mFileUtils = fileUtils;
-    }
+    private String mDownloadUrlString;
 
     /**
-     * Sets the downloader required parameters.
-     *
-     * @param downloadUrlString        url for downloading an update.
-     * @param downloadFile             path to download file to.
-     * @param downloadProgressCallback callback for download progress.
+     * Path to download file to.
      */
-    public void setParameters(String downloadUrlString, File downloadFile, DownloadProgressCallback downloadProgressCallback) {
-        this.downloadUrlString = downloadUrlString;
-        this.downloadFile = downloadFile;
-        this.downloadProgressCallback = downloadProgressCallback;
-    }
+    private File mDownloadFile;
 
     /**
-     * Opens url connection for the provided url.
-     *
-     * @param urlString url to open.
-     * @return instance of url connection.
-     * @throws IOException read/write error occurred while accessing the file system.
+     * Callback for download process.
      */
-    public HttpURLConnection createConnection(String urlString) throws IOException {
-        URL url = new URL(urlString);
-        HttpURLConnection connection;
-        connection = (HttpURLConnection) url.openConnection();
-        return connection;
+    private DownloadProgressCallback mDownloadProgressCallback;
+
+    public DownloadPackageTask(FileUtils fileUtils, String mDownloadUrlString, File mDownloadFile, DownloadProgressCallback mDownloadProgressCallback) {
+        this.mFileUtils = fileUtils;
+        this.mDownloadUrlString = mDownloadUrlString;
+        this.mDownloadFile = mDownloadFile;
+        this.mDownloadProgressCallback = mDownloadProgressCallback;
     }
 
     @Override
-    protected CodePushDownloadPackageResult doInBackground(Void... params) {
+    protected CodePushDownloadPackageResult doInBackground(Void... voids) {
         HttpURLConnection connection;
         BufferedInputStream bufferedInputStream = null;
         FileOutputStream fileOutputStream = null;
         BufferedOutputStream bufferedOutputStream = null;
         try {
-            connection = createConnection(downloadUrlString);
+            connection = createConnection(mDownloadUrlString);
         } catch (IOException e) {
 
             /* We can't throw custom errors from this function, so any error will be passed to the result. */
-            return new CodePushDownloadPackageResult(new CodePushDownloadPackageException(downloadUrlString, e));
+            mExecutionException = new CodePushDownloadPackageException(mDownloadUrlString, e);
+            return null;
         }
         try {
             long totalBytes = connection.getContentLength();
             long receivedBytes = 0;
             bufferedInputStream = new BufferedInputStream(connection.getInputStream());
-            fileOutputStream = new FileOutputStream(downloadFile);
+            fileOutputStream = new FileOutputStream(mDownloadFile);
             bufferedOutputStream = new BufferedOutputStream(fileOutputStream, CodePushConstants.DOWNLOAD_BUFFER_SIZE);
             byte[] data = new byte[CodePushConstants.DOWNLOAD_BUFFER_SIZE];
 
@@ -121,23 +96,24 @@ public class PackageDownloader extends AsyncTask<Void, Void, CodePushDownloadPac
                 }
                 receivedBytes += numBytesRead;
                 bufferedOutputStream.write(data, 0, numBytesRead);
-                if (downloadProgressCallback != null) {
-                    downloadProgressCallback.call(new DownloadProgress(totalBytes, receivedBytes));
+                if (mDownloadProgressCallback != null) {
+                    mDownloadProgressCallback.call(new DownloadProgress(totalBytes, receivedBytes));
                 }
             }
             if (totalBytes >= 0 && totalBytes != receivedBytes) {
-                return new CodePushDownloadPackageResult(new CodePushDownloadPackageException(receivedBytes, totalBytes));
+                mExecutionException = new CodePushDownloadPackageException(receivedBytes, totalBytes);
             }
             boolean isZip = ByteBuffer.wrap(header).getInt() == ZIP_HEADER;
-            return new CodePushDownloadPackageResult(downloadFile, isZip);
+            return new CodePushDownloadPackageResult(mDownloadFile, isZip);
         } catch (IOException e) {
-            return new CodePushDownloadPackageResult(new CodePushDownloadPackageException(e));
+            mExecutionException = new CodePushDownloadPackageException(e);
+            return null;
         } finally {
             Exception e = mFileUtils.finalizeResources(
                     Arrays.asList(bufferedOutputStream, fileOutputStream, bufferedInputStream),
                     null);
             if (e != null) {
-                return new CodePushDownloadPackageResult(new CodePushDownloadPackageException(new CodePushFinalizeException(e)));
+                mFinalizeException = new CodePushFinalizeException(e);
             }
         }
     }
