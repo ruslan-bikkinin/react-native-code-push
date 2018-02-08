@@ -7,7 +7,8 @@ import com.microsoft.codepush.common.utils.FileUtils;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Random;
+
+import static java.util.UUID.randomUUID;
 
 /**
  * Utils to make {@link FileUtils} testing process easier and avoid code repetition.
@@ -21,8 +22,7 @@ public class CommonFileTestUtils {
      * @return real test folder.
      */
     public static File getRealTestFolder() {
-        Random random = new Random(System.currentTimeMillis());
-        return new File(getTestingDirectory(), "Test" + random.nextInt());
+        return new File(getTestingDirectory(), "Test" + randomUUID().toString());
     }
 
     /**
